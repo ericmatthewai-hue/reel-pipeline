@@ -534,7 +534,7 @@ function editorHTML(v){
   let parentBox="";
   if(parent){ parentBox=`<div class="parentbox"><div class="pl">✂ SHORT FROM LONG-FORM</div><div style="font-weight:650">${esc(parent.title||"Untitled")}</div>${parent.driveLink?`<div style="margin-top:6px;font-size:12.5px">Shared assets: <a class="link" href="${esc(parent.driveLink)}" target="_blank" rel="noopener">${esc(parent.driveLink)}</a></div>`:""}</div>`; }
 
-  const driveField=(isLong||isChild)?`<label class="fld"><span>Google Drive assets link ${isChild?'(from parent)':''}</span><input id="f_drive" value="${esc(v.driveLink||(parent&&parent.driveLink)||'')}" placeholder="https://drive.google.com/…" inputmode="url"></label>`:"";
+  const driveField=`<label class="fld"><span>Google Drive assets link ${isChild?'(from parent)':''}</span><input id="f_drive" value="${esc(v.driveLink||(parent&&parent.driveLink)||'')}" placeholder="https://drive.google.com/…" inputmode="url"></label>`;
 
   // derived shorts (long only)
   let kidsBlock="";
