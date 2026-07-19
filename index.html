@@ -305,7 +305,6 @@
 
 const STAGES = [
   {id:"inbox",   name:"Ideas",     color:"var(--inbox)"},
-  {id:"script",  name:"Scripting", color:"var(--script)"},
   {id:"toshoot", name:"To Shoot",  color:"var(--shoot)"},
   {id:"editing", name:"Editing",   color:"var(--edit)"},
   {id:"ready",   name:"Ready",     color:"var(--ready)"},
@@ -313,7 +312,7 @@ const STAGES = [
   {id:"posted",  name:"Posted",    color:"var(--posted)"},
 ];
 const STAGE_IDX = Object.fromEntries(STAGES.map((s,i)=>[s.id,i]));
-const NEXT_LABEL = { script:"To Shoot ›", toshoot:"Mark shot ›", editing:"Mark ready ›", ready:"Schedule ›", scheduled:"Mark posted ›" };
+const NEXT_LABEL = { toshoot:"Mark shot ›", editing:"Mark ready ›", ready:"Schedule ›", scheduled:"Mark posted ›" };
 const SHORT_TYPES = ["Talking head","Skit / comedy","Tutorial","Trend / remix","Story / vlog","Product / promo","Educational","Clip from long-form"];
 const MAX_KIDS = 6;
 
@@ -327,7 +326,8 @@ let ui = { section: cfg.section||"short", view: (cfg.view==="board"||cfg.view===
            calMonth:null, calSel:null, armedId:null, _draft:null, selected:new Set() };
 let bulkBarEl=null;
 
-function load(){ try{ const d=JSON.parse(localStorage.getItem(LS_KEY)); if(d&&d.videos) return d; }catch(e){} return {videos:{},updatedAt:0}; }
+function migrateStage(v){ if(v && v.stage==="script") v.stage="toshoot"; return v; } // "Scripting" stage removed → To Shoot
+function load(){ try{ const d=JSON.parse(localStorage.getItem(LS_KEY)); if(d&&d.videos){ Object.values(d.videos).forEach(migrateStage); return d; } }catch(e){} return {videos:{},updatedAt:0}; }
 function save(){ state.updatedAt=nowISO(); localStorage.setItem(LS_KEY, JSON.stringify(state)); }
 function loadCfg(){ try{ return JSON.parse(localStorage.getItem(CFG_KEY))||{}; }catch(e){ return {}; } }
 function saveCfg(){ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
@@ -437,7 +437,7 @@ function cardEl(v){
 
 function cardAction(id,act){
   const v=state.videos[id]; if(!v) return;
-  if(act==="accept") setStage(id,"script");
+  if(act==="accept") setStage(id,"toshoot");
   else if(act==="reject"){ v.status="rejected"; v.updatedAt=nowISO(); save(); pushRemote(v); render(); toast("Rejected — find it in the Rejected filter"); }
   else if(act==="restore"){ v.status="active"; v.stage="inbox"; v.updatedAt=nowISO(); save(); pushRemote(v); render(); toast("Restored to Ideas"); }
   else if(act==="del"){ if(confirm("Delete permanently?")){ v._deleted=true; v.updatedAt=nowISO(); save(); pushRemote(v); render(); toast("Deleted"); } }
@@ -812,7 +812,7 @@ function collectInto(v){
 function addKid(parent){
   collectInto(parent); state.videos[parent.id]=parent; save(); pushRemote(parent);
   const n=kidsOf(parent.id).length+1;
-  const kid=blankVideo({ format:"short", parentId:parent.id, status:"active", stage:"script",
+  const kid=blankVideo({ format:"short", parentId:parent.id, status:"active", stage:"toshoot",
     driveLink:parent.driveLink||"", platform:(parent.platform||[]).slice(), shortType:"Clip from long-form",
     title:(parent.title?parent.title+" — ":"")+"Short "+n });
   state.videos[kid.id]=kid; save(); pushRemote(kid);
@@ -927,7 +927,7 @@ async function connectSync(showToast){
     pushAllLocal();
   }catch(e){ console.error(e); setSyncDot("err"); renderSyncSheetIfOpen(); if(showToast) toast("Sync failed — check keys"); }
 }
-function mergeRemote(id,data){ if(!data) return; const l=state.videos[id]; if(!l||(data.updatedAt||"")>(l.updatedAt||"")) state.videos[id]=data; }
+function mergeRemote(id,data){ if(!data) return; migrateStage(data); const l=state.videos[id]; if(!l||(data.updatedAt||"")>(l.updatedAt||"")) state.videos[id]=data; }
 async function pushRemote(v){ if(!sb||syncState!=="on") return; try{ await sb.from("videos").upsert({id:v.id,space:cfg.space||"my-videos",data:v,updated_at:v.updatedAt||nowISO()}); }catch(e){ console.error("push",e); } }
 async function pushAllLocal(){ if(!sb) return; const rows=Object.values(state.videos).map(v=>({id:v.id,space:cfg.space||"my-videos",data:v,updated_at:v.updatedAt||nowISO()})); if(rows.length) try{ await sb.from("videos").upsert(rows); }catch(e){ console.error(e); } }
 
