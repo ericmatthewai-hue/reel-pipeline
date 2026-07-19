@@ -627,7 +627,7 @@ function wireEditor(v){
       const title=(sheetBody.querySelector("#f_title").value||"").trim();
       if(!title){ toast("Add a title first"); return; }
       dc.disabled=true; dc.textContent="Creating folder…";
-      try{ const url=await createDriveFolder(title); di.value=url; v.driveLink=url; sync(); toast("Drive folder created ✓"); }
+      try{ const url=await createDriveFolder(title,v.format); di.value=url; v.driveLink=url; sync(); toast("Drive folder created ✓"); }
       catch(err){ toast("Folder failed: "+err.message); dc.disabled=false; dc.textContent="✨ Retry — create Drive folder"; }
     });
   }
@@ -762,9 +762,9 @@ async function pushRemote(v){ if(!sb||syncState!=="on") return; try{ await sb.fr
 async function pushAllLocal(){ if(!sb) return; const rows=Object.values(state.videos).map(v=>({id:v.id,space:cfg.space||"my-videos",data:v,updated_at:v.updatedAt||nowISO()})); if(rows.length) try{ await sb.from("videos").upsert(rows); }catch(e){ console.error(e); } }
 
 // ---- Google Drive folder creation (via user's Apps Script web app) ----
-async function createDriveFolder(title){
+async function createDriveFolder(title,format){
   if(!cfg.driveUrl) throw new Error("Drive not set up");
-  const res=await fetch(cfg.driveUrl,{ method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify({title:title, secret:cfg.driveSecret||""}) });
+  const res=await fetch(cfg.driveUrl,{ method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify({title:title, format:format||"", secret:cfg.driveSecret||""}) });
   let data; try{ data=await res.json(); }catch(e){ throw new Error("bad response"); }
   if(!data||!data.ok) throw new Error((data&&data.error)||"failed");
   return data.url;
