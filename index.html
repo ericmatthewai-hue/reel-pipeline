@@ -46,6 +46,7 @@
     border-radius:var(--radius-sm); padding:11px 12px; color:var(--text); outline:none;
   }
   input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+  input[type=checkbox]{width:18px; height:18px; min-width:18px; padding:0; margin:0; accent-color:var(--accent); cursor:pointer; background:none; border:none; flex:0 0 auto}
   textarea{resize:vertical; min-height:70px; line-height:1.5}
   label.fld{display:block; margin:0 0 14px}
   label.fld > span{display:block; font-size:12px; color:var(--muted); margin:0 0 5px; font-weight:600; letter-spacing:.02em}
@@ -149,6 +150,15 @@
   td .stagepill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;color:#fff}
   .tt{font-weight:600; max-width:220px}
   .tmuted{color:var(--muted)}
+  th.chk,td.chk{width:40px; text-align:center; padding-left:12px; padding-right:6px}
+  tr.selrow td{background:rgba(91,140,255,.10)}
+  .bulkbar{position:fixed; left:50%; bottom:calc(18px + var(--safe-b)); transform:translateX(-50%); display:flex; align-items:center; gap:9px; flex-wrap:wrap; justify-content:center; background:var(--panel2); border:1px solid var(--line2); border-radius:14px; padding:10px 13px; box-shadow:var(--shadow); z-index:70; max-width:calc(100vw - 20px)}
+  .bulkbar .bcount{font-weight:700; font-size:13.5px; white-space:nowrap}
+  .bulkbar .bmove{font-size:13px; color:var(--muted); display:flex; align-items:center; gap:6px; white-space:nowrap}
+  .bulkbar select{width:auto; padding:6px 8px; height:34px; background:var(--panel); font-size:13px}
+  .bbtn{padding:8px 12px; border-radius:9px; background:var(--panel); border:1px solid var(--line); font-weight:600; font-size:13px; color:var(--text); white-space:nowrap}
+  .bbtn:active{transform:scale(.96)}
+  .bbtn.danger{background:rgba(239,68,68,.14); color:var(--danger); border-color:transparent}
 
   /* Calendar */
   .cal{height:100%; overflow-y:auto; padding:14px; -webkit-overflow-scrolling:touch}
@@ -314,7 +324,8 @@ let state = load();
 let cfg = loadCfg();
 let ui = { section: cfg.section||"short", view: (cfg.view==="board"||cfg.view==="table")?cfg.view:"board",
            plat:null, status:"active", q:"", editingId:null, compact:false,
-           calMonth:null, calSel:null, armedId:null, _draft:null };
+           calMonth:null, calSel:null, armedId:null, _draft:null, selected:new Set() };
+let bulkBarEl=null;
 
 function load(){ try{ const d=JSON.parse(localStorage.getItem(LS_KEY)); if(d&&d.videos) return d; }catch(e){} return {videos:{},updatedAt:0}; }
 function save(){ state.updatedAt=nowISO(); localStorage.setItem(LS_KEY, JSON.stringify(state)); }
@@ -351,6 +362,7 @@ function passesFilter(v){
 // ============================ RENDER ============================
 const main=document.getElementById("main");
 function render(){
+  if(bulkBarEl){ bulkBarEl.remove(); bulkBarEl=null; }
   document.querySelectorAll(".nav-item[data-section]").forEach(b=>b.classList.toggle("on",b.dataset.section===ui.section));
   const st=document.getElementById("secTitle"); if(st) st.textContent=ui.section==="short"?"Short-form":ui.section==="long"?"Long-form":"Calendar";
   const seg=document.getElementById("viewSeg"); if(seg) seg.style.display=ui.section==="calendar"?"none":"";
@@ -436,26 +448,87 @@ function cardAction(id,act){
 function renderTable(){
   const src=ui.status==="rejected"?all().filter(v=>v.status==="rejected"):activeSorted();
   const rows=src.filter(passesFilter);
+  const visible=new Set(rows.map(v=>v.id));
+  ui.selected.forEach(id=>{ if(!visible.has(id)) ui.selected.delete(id); });
+
   const wrap=document.createElement("div"); wrap.className="tablewrap";
-  wrap.innerHTML=`<table><thead><tr><th>Title</th><th>Stage</th><th>Format</th><th>Type</th><th>Platform</th><th>From / Shorts</th><th>Scheduled</th></tr></thead><tbody></tbody></table>`;
+  wrap.innerHTML=`<table><thead><tr><th class="chk"><input type="checkbox" id="selAll"></th><th>Title</th><th>Stage</th><th>Format</th><th>Type</th><th>Platform</th><th>From / Shorts</th><th>Scheduled</th></tr></thead><tbody></tbody></table>`;
   const tb=wrap.querySelector("tbody");
   rows.forEach(v=>{
     const st=STAGES[STAGE_IDX[v.stage]??0];
     const parent=v.parentId?state.videos[v.parentId]:null;
     const rel=parent?("↳ "+(parent.title||"long")):(v.format==="long"?("✂ "+kidsOf(v.id).length+"/"+MAX_KIDS):"—");
     const tr=document.createElement("tr"); tr.dataset.id=v.id;
-    tr.innerHTML=`<td class="tt">${esc(v.title||"Untitled")}${v.status==="rejected"?' <span class="tmuted">(rejected)</span>':''}</td>
+    if(ui.selected.has(v.id)) tr.classList.add("selrow");
+    tr.innerHTML=`<td class="chk"><input type="checkbox" ${ui.selected.has(v.id)?"checked":""}></td>
+      <td class="tt">${esc(v.title||"Untitled")}${v.status==="rejected"?' <span class="tmuted">(rejected)</span>':''}</td>
       <td><span class="stagepill" style="background:${st.color}">${st.name}</span></td>
       <td class="tmuted">${v.format==='long'?'Long':'Short'}</td>
       <td class="tmuted">${esc(v.shortType||"—")}</td>
       <td class="tmuted">${(v.platform||[]).map(p=>p==="youtube"?"YT":"IG").join(", ")||"—"}</td>
       <td class="tmuted">${esc(rel)}</td>
       <td class="tmuted">${fmtDate(v.scheduledDate)||"—"}</td>`;
-    tr.addEventListener("click",()=>openEditor(v.id));
+    const cb=tr.querySelector('input[type=checkbox]');
+    cb.addEventListener("click",e=>e.stopPropagation());
+    cb.addEventListener("change",()=>{ cb.checked?ui.selected.add(v.id):ui.selected.delete(v.id); tr.classList.toggle("selrow",cb.checked); syncSelAll(rows); updateBulkBar(); });
+    tr.addEventListener("click",e=>{ if(e.target.closest(".chk")) return; openEditor(v.id); });
     tb.appendChild(tr);
   });
   main.innerHTML=""; main.appendChild(wrap);
+
+  const selAll=wrap.querySelector("#selAll");
+  selAll.addEventListener("change",()=>{
+    if(selAll.checked) rows.forEach(v=>ui.selected.add(v.id)); else ui.selected.clear();
+    tb.querySelectorAll("tr").forEach(tr=>{ const on=ui.selected.has(tr.dataset.id); tr.classList.toggle("selrow",on); const c=tr.querySelector('input[type=checkbox]'); if(c) c.checked=on; });
+    updateBulkBar();
+  });
+  syncSelAll(rows); updateBulkBar();
   if(!rows.length) main.appendChild(emptyEl("Nothing here"));
+}
+
+function syncSelAll(rows){
+  const selAll=document.getElementById("selAll"); if(!selAll) return;
+  const n=rows.filter(v=>ui.selected.has(v.id)).length;
+  selAll.checked = n>0 && n===rows.length;
+  selAll.indeterminate = n>0 && n<rows.length;
+}
+
+function updateBulkBar(){
+  if(bulkBarEl){ bulkBarEl.remove(); bulkBarEl=null; }
+  const ids=[...ui.selected]; if(!ids.length) return;
+  const rej = ui.status==="rejected";
+  const stageOpts = STAGES.map(s=>`<option value="${s.id}">${s.name}</option>`).join("");
+  const bar=document.createElement("div"); bar.className="bulkbar";
+  bar.innerHTML=`<span class="bcount">${ids.length} selected</span>
+    ${rej ? `<button class="bbtn" data-b="restore">↩ Restore</button>`
+          : `<label class="bmove">Move to <select id="bulkStage"><option value="">…</option>${stageOpts}</select></label><button class="bbtn" data-b="reject">✗ Reject</button>`}
+    <button class="bbtn danger" data-b="delete">🗑 Delete</button>
+    <button class="bbtn" data-b="clear">Clear</button>`;
+  document.body.appendChild(bar); bulkBarEl=bar;
+  const ss=bar.querySelector("#bulkStage");
+  if(ss) ss.addEventListener("change",()=>{ if(ss.value) bulkMove(ids, ss.value); });
+  bar.querySelectorAll("[data-b]").forEach(b=>b.addEventListener("click",()=>bulkAction(b.dataset.b, ids)));
+}
+
+function bulkAction(kind, ids){
+  if(kind==="clear"){ ui.selected.clear(); render(); return; }
+  if(kind==="delete"){
+    if(!confirm("Delete "+ids.length+" video"+(ids.length>1?"s":"")+"? This can't be undone.")) return;
+    ids.forEach(id=>{ const v=state.videos[id]; if(v){ v._deleted=true; v.updatedAt=nowISO(); pushRemote(v); } });
+    ui.selected.clear(); save(); render(); toast("Deleted "+ids.length); return;
+  }
+  if(kind==="reject"){
+    ids.forEach(id=>{ const v=state.videos[id]; if(v){ v.status="rejected"; v.updatedAt=nowISO(); pushRemote(v); } });
+    ui.selected.clear(); save(); render(); toast("Rejected "+ids.length); return;
+  }
+  if(kind==="restore"){
+    ids.forEach(id=>{ const v=state.videos[id]; if(v){ v.status="active"; v.stage="inbox"; v.updatedAt=nowISO(); pushRemote(v); } });
+    ui.selected.clear(); save(); render(); toast("Restored "+ids.length); return;
+  }
+}
+function bulkMove(ids, stage){
+  ids.forEach(id=>{ const v=state.videos[id]; if(v && v.stage!==stage){ v.stage=stage; v.stageEnteredAt=nowISO(); v.updatedAt=nowISO(); if(stage==="scheduled"&&!v.scheduledDate) v.scheduledDate=todayISO(); pushRemote(v); } });
+  ui.selected.clear(); save(); render(); toast("Moved "+ids.length+" to "+STAGES[STAGE_IDX[stage]].name);
 }
 
 // ============================ CALENDAR ============================
