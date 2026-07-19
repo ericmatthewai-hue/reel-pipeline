@@ -392,6 +392,8 @@ function cardEl(v){
   const parent=v.parentId?state.videos[v.parentId]:null;
   const parentTag=parent?`<span class="tag parent">↳ ${esc(parent.title||"long-form")}</span>`:"";
   const driveTag=v.driveLink?`<span class="tag drive">🔗 assets</span>`:"";
+  const rawTag=v.rawLink?`<span class="tag" style="background:rgba(245,158,11,.14);color:var(--warn)">🎞 raw</span>`:"";
+  const finalTag=v.finalLink?`<span class="tag" style="background:rgba(34,197,94,.14);color:var(--ok)">✅ final</span>`:"";
   const kids=v.format==="long"?kidsOf(v.id).length:0;
   const kidsTag=kids?`<span class="tag kids">✂ ${kids}/${MAX_KIDS} shorts</span>`:"";
   const stuck=daysBetween(v.stageEnteredAt);
@@ -411,7 +413,7 @@ function cardEl(v){
     bar=back+fwd+(due?`<span style="flex:0 0 auto">${due}</span>`:"");
   }
   el.innerHTML=`<div class="ct">${esc(v.title||"Untitled")}</div>
-    <div class="cmeta"><span class="tag ${v.format}">${v.format==='long'?'Long':'Short'}</span>${typeTag}${parentTag}${driveTag}${kidsTag}${plats}${stuckTag}</div>
+    <div class="cmeta"><span class="tag ${v.format}">${v.format==='long'?'Long':'Short'}</span>${typeTag}${parentTag}${driveTag}${rawTag}${finalTag}${kidsTag}${plats}${stuckTag}</div>
     <div class="prog">${dots}</div>
     <div class="cbar">${bar}</div>`;
   el.addEventListener("click",e=>{ if(e.target.closest("[data-act]")) return; openEditor(v.id); });
@@ -549,7 +551,7 @@ const sheet=document.getElementById("sheet"), overlay=document.getElementById("o
 function blankVideo(over){
   return Object.assign({ id:uid(), title:"", format:"short", shortType:"", platform:[], status:"active", stage:"inbox",
     parentId:null, driveLink:"", notes:"", hook:"", script:"", shotList:"", location:"", gear:"", editNotes:"", roughCut:"",
-    caption:"", hashtags:"", scheduledDate:"", publishedUrl:"",
+    rawLink:"", finalLink:"", caption:"", hashtags:"", scheduledDate:"", publishedUrl:"",
     createdAt:nowISO(), updatedAt:nowISO(), stageEnteredAt:nowISO(), order:all().length }, over||{});
 }
 
@@ -591,7 +593,7 @@ function wireCompact(v){
       const title=(sheetBody.querySelector("#f_title").value||"").trim();
       if(!title){ toast("Add an idea name first"); return; }
       dc.disabled=true; dc.textContent="Creating folder…";
-      try{ const url=await createDriveFolder(title,v.format); di.value=url; v.driveLink=url; sync(); toast("Drive folder created ✓"); }
+      try{ const url=await createDriveFolder({title, format:v.format}); di.value=url; v.driveLink=url; sync(); toast("Drive folder created ✓"); }
       catch(err){ toast("Folder failed: "+err.message); dc.disabled=false; dc.textContent="✨ Retry — create Drive folder"; }
     });
   }
@@ -658,7 +660,10 @@ function editorHTML(v){
 
     <div class="section">✂️ Editing</div>
     <label class="fld"><span>Edit notes</span><textarea id="f_edit" placeholder="Music, captions, pacing…">${esc(v.editNotes)}</textarea></label>
+    <label class="fld"><span>Raw files folder <span style="color:var(--faint);font-weight:500">· send to editor</span></span><input id="f_raw" value="${esc(v.rawLink)}" placeholder="Auto-create, or paste a link" inputmode="url"></label>
+    ${cfg.driveUrl?`<button type="button" class="addkid" id="btnRawCreate" style="margin:-6px 0 16px">✨ Create raw files folder</button>`:""}
     <label class="fld"><span>Rough cut link</span><input id="f_rough" value="${esc(v.roughCut)}" placeholder="https://…" inputmode="url"></label>
+    <label class="fld"><span>Final video link</span><input id="f_final" value="${esc(v.finalLink)}" placeholder="Link to the finished cut" inputmode="url"></label>
 
     <div class="section">🗓 Posting</div>
     <label class="fld"><span>Caption / description</span><textarea id="f_caption" placeholder="Final caption…">${esc(v.caption)}</textarea></label>
@@ -700,8 +705,27 @@ function wireEditor(v){
       const title=(sheetBody.querySelector("#f_title").value||"").trim();
       if(!title){ toast("Add a title first"); return; }
       dc.disabled=true; dc.textContent="Creating folder…";
-      try{ const url=await createDriveFolder(title,v.format); di.value=url; v.driveLink=url; sync(); toast("Drive folder created ✓"); }
+      try{ const url=await createDriveFolder({title, format:v.format}); di.value=url; v.driveLink=url; sync(); toast("Drive folder created ✓"); }
       catch(err){ toast("Folder failed: "+err.message); dc.disabled=false; dc.textContent="✨ Retry — create Drive folder"; }
+    });
+  }
+  const rc=sheetBody.querySelector("#btnRawCreate");
+  if(rc){
+    const ri=sheetBody.querySelector("#f_raw");
+    const rsync=()=>{ rc.style.display=ri.value.trim()?"none":""; };
+    rsync(); ri.addEventListener("input",rsync);
+    rc.addEventListener("click",async()=>{
+      const title=(sheetBody.querySelector("#f_title").value||"").trim();
+      if(!title){ toast("Add a title first"); return; }
+      rc.disabled=true; rc.textContent="Creating folder…";
+      try{
+        const dv=(sheetBody.querySelector("#f_drive")?sheetBody.querySelector("#f_drive").value:"")||v.driveLink||"";
+        const parentId=driveIdFromUrl(dv);
+        const label="Raw — "+title;
+        const opts={ title:label, format:v.format, name:parentId?"Raw footage":label };
+        if(parentId) opts.parentId=parentId;
+        const url=await createDriveFolder(opts); ri.value=url; v.rawLink=url; rsync(); toast("Raw folder created ✓");
+      }catch(err){ toast("Folder failed: "+err.message); rc.disabled=false; rc.textContent="✨ Retry — create raw folder"; }
     });
   }
   ui._draft=v;
@@ -712,7 +736,7 @@ function collectInto(v){
   const set=(k,id)=>{ const val=g(id); if(val!==undefined) v[k]=val; };
   set("title","f_title"); set("shortType","f_type"); set("notes","f_notes"); set("hook","f_hook");
   set("driveLink","f_drive"); set("script","f_script"); set("shotList","f_shot"); set("location","f_loc");
-  set("gear","f_gear"); set("editNotes","f_edit"); set("roughCut","f_rough"); set("caption","f_caption");
+  set("gear","f_gear"); set("editNotes","f_edit"); set("roughCut","f_rough"); set("rawLink","f_raw"); set("finalLink","f_final"); set("caption","f_caption");
   set("hashtags","f_tags"); set("scheduledDate","f_pub"); set("publishedUrl","f_url");
   if(v.title) v.title=v.title.trim(); if(v.shortType) v.shortType=v.shortType.trim();
   if(v.format!=="short") v.shortType="";
@@ -842,9 +866,11 @@ async function pushRemote(v){ if(!sb||syncState!=="on") return; try{ await sb.fr
 async function pushAllLocal(){ if(!sb) return; const rows=Object.values(state.videos).map(v=>({id:v.id,space:cfg.space||"my-videos",data:v,updated_at:v.updatedAt||nowISO()})); if(rows.length) try{ await sb.from("videos").upsert(rows); }catch(e){ console.error(e); } }
 
 // ---- Google Drive folder creation (via user's Apps Script web app) ----
-async function createDriveFolder(title,format){
+function driveIdFromUrl(u){ const m=/\/folders\/([A-Za-z0-9_-]+)/.exec(u||""); return m?m[1]:""; }
+async function createDriveFolder(opts){
   if(!cfg.driveUrl) throw new Error("Drive not set up");
-  const res=await fetch(cfg.driveUrl,{ method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify({title:title, format:format||"", secret:cfg.driveSecret||""}) });
+  const body=Object.assign({secret:cfg.driveSecret||""}, typeof opts==="string"?{title:opts}:(opts||{}));
+  const res=await fetch(cfg.driveUrl,{ method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(body) });
   let data; try{ data=await res.json(); }catch(e){ throw new Error("bad response"); }
   if(!data||!data.ok) throw new Error((data&&data.error)||"failed");
   return data.url;
