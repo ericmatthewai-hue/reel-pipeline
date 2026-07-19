@@ -539,10 +539,12 @@ function emptyEl(msg){ const e=document.createElement("div"); e.className="empty
 // ============================ STAGE ============================
 function setStage(id,stage){
   const v=state.videos[id]; if(!v||v.stage===stage) return;
+  const oldStage=v.stage;
   v.stage=stage; v.stageEnteredAt=nowISO(); v.updatedAt=nowISO();
   if(stage==="scheduled" && !v.scheduledDate){ v.scheduledDate=todayISO(); toast("Scheduled today — set a date in Calendar"); }
   else if(stage==="scheduled") toast("Moved to Scheduled");
   save(); pushRemote(v); render();
+  if(oldStage==="inbox" && stage!=="inbox") maybeAutoFolder(v);
 }
 
 // ============================ EDITOR ============================
@@ -566,16 +568,20 @@ function openEditor(id, presetFormat){
 }
 
 function compactHTML(v){
-  return `
-    <label class="fld"><span>Idea name</span><input id="f_title" value="${esc(v.title)}" placeholder="What's the idea?"></label>
+  const showFmt = ui.section==="calendar";
+  const fmtBlock = showFmt ? `
     <div class="fld"><span>Format</span><div class="pills">
       <button type="button" class="pick ${v.format==='short'?'on':''}" data-fmt="short">Short-form</button>
       <button type="button" class="pick ${v.format==='long'?'on':''}" data-fmt="long">Long-form</button>
-    </div></div>
-    <label class="fld"><span>Notes</span><textarea id="f_notes" style="min-height:92px" placeholder="Concept, angle, references…">${esc(v.notes)}</textarea></label>
-    <label class="fld"><span>Google Drive folder</span><input id="f_drive" value="${esc(v.driveLink)}" placeholder="Auto-create, or paste a link" inputmode="url"></label>
-    ${cfg.driveUrl?`<button type="button" class="addkid" id="btnDriveCreate">✨ Auto-create Drive folder</button>`:`<div class="hint">Set up Drive in Sync settings to auto-create folders here.</div>`}
-    <div class="hint" style="margin-top:16px">New ideas land in <b>Ideas</b>. Open the card later to accept it and add script, shooting &amp; posting details.</div>
+    </div></div>` : "";
+  const note = cfg.driveUrl
+    ? `<div class="hint" style="margin-top:16px">Lands in <b>Ideas</b>. A Google Drive folder is created automatically when you <b>accept</b> it. Open the card later to add script, shooting &amp; posting details.</div>`
+    : `<div class="hint" style="margin-top:16px">Lands in <b>Ideas</b>. Open the card later to accept it and add the rest.</div>`;
+  return `
+    <label class="fld"><span>Idea name</span><input id="f_title" value="${esc(v.title)}" placeholder="What's the idea?"></label>
+    ${fmtBlock}
+    <label class="fld"><span>Notes</span><textarea id="f_notes" style="min-height:104px" placeholder="Concept, angle, references…">${esc(v.notes)}</textarea></label>
+    ${note}
   `;
 }
 
@@ -584,19 +590,6 @@ function wireCompact(v){
     v.format=b.dataset.fmt;
     sheetBody.querySelectorAll("[data-fmt]").forEach(x=>x.classList.toggle("on",x.dataset.fmt===v.format));
   }));
-  const dc=sheetBody.querySelector("#btnDriveCreate");
-  if(dc){
-    const di=sheetBody.querySelector("#f_drive");
-    const sync=()=>{ dc.style.display=di.value.trim()?"none":""; };
-    sync(); di.addEventListener("input",sync);
-    dc.addEventListener("click",async()=>{
-      const title=(sheetBody.querySelector("#f_title").value||"").trim();
-      if(!title){ toast("Add an idea name first"); return; }
-      dc.disabled=true; dc.textContent="Creating folder…";
-      try{ const url=await createDriveFolder({title, format:v.format}); di.value=url; v.driveLink=url; sync(); toast("Drive folder created ✓"); }
-      catch(err){ toast("Folder failed: "+err.message); dc.disabled=false; dc.textContent="✨ Retry — create Drive folder"; }
-    });
-  }
   ui._draft=v;
 }
 
@@ -874,6 +867,15 @@ async function createDriveFolder(opts){
   let data; try{ data=await res.json(); }catch(e){ throw new Error("bad response"); }
   if(!data||!data.ok) throw new Error((data&&data.error)||"failed");
   return data.url;
+}
+// auto-create a video's main folder (once) when it becomes a real project
+async function maybeAutoFolder(v){
+  if(!cfg.driveUrl || !v || v.driveLink || !v.title) return;
+  try{
+    const url=await createDriveFolder({title:v.title, format:v.format});
+    const cur=state.videos[v.id];
+    if(cur && !cur.driveLink){ cur.driveLink=url; cur.updatedAt=nowISO(); save(); pushRemote(cur); render(); toast("📁 Drive folder created"); }
+  }catch(e){ console.error("auto folder",e); }
 }
 
 document.getElementById("btnSync").onclick=()=>{ renderSyncSheet(); showSheet(syncSheet); };
