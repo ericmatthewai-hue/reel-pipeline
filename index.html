@@ -50,12 +50,38 @@
   label.fld{display:block; margin:0 0 14px}
   label.fld > span{display:block; font-size:12px; color:var(--muted); margin:0 0 5px; font-weight:600; letter-spacing:.02em}
 
-  #app{display:flex; flex-direction:column; height:100dvh}
-  header.top{padding:calc(var(--safe-t) + 10px) 14px 10px; background:var(--bg); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:20}
-  .top-row{display:flex; align-items:center; gap:10px}
-  .brand{display:flex; align-items:center; gap:9px; font-weight:800; letter-spacing:-.01em; font-size:17px}
-  .brand .dot{width:11px;height:11px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 0 12px var(--accent)}
+  #app{display:flex; flex-direction:row; height:100dvh; overflow:hidden}
   .spacer{flex:1}
+
+  /* Sidebar */
+  .sidebar{flex:0 0 214px; width:214px; background:var(--bg2); border-right:1px solid var(--line); display:flex; flex-direction:column; padding:calc(var(--safe-t) + 16px) 12px 16px; gap:2px; z-index:60}
+  .side-brand{display:flex; align-items:center; gap:9px; font-weight:800; font-size:17px; letter-spacing:-.01em; padding:4px 10px 16px}
+  .side-brand .dot{width:11px;height:11px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 0 12px var(--accent)}
+  .side-nav{display:flex; flex-direction:column; gap:3px}
+  .nav-item{display:flex; align-items:center; gap:11px; padding:11px 12px; border-radius:10px; color:var(--muted); font-weight:600; font-size:14.5px; text-align:left; width:100%}
+  .nav-item .ni-ic{font-size:16px; width:20px; text-align:center; flex:0 0 auto}
+  .nav-item.on{background:var(--panel); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .nav-item:active{transform:scale(.98)}
+  .side-foot{margin-top:auto; border-top:1px solid var(--line); padding-top:10px}
+  .side-foot .nav-item{font-size:13.5px}
+
+  /* Content column */
+  .content{flex:1; min-width:0; display:flex; flex-direction:column; height:100dvh}
+  .cbar{display:flex; align-items:center; gap:8px; padding:calc(var(--safe-t) + 10px) 14px 10px; border-bottom:1px solid var(--line); background:var(--bg)}
+  .sec-title{font-weight:750; font-size:16px; white-space:nowrap; flex:0 0 auto}
+  .filters{display:flex; align-items:center; gap:8px; overflow-x:auto; flex:1; min-width:0; -webkit-overflow-scrolling:touch}
+  .filters::-webkit-scrollbar{display:none}
+  .hamburger{display:none}
+  .scrim{display:none}
+
+  @media(max-width:760px){
+    .sidebar{position:fixed; top:0; left:0; bottom:0; width:236px; flex-basis:236px; transform:translateX(-100%); transition:transform .22s cubic-bezier(.2,.8,.2,1); box-shadow:var(--shadow)}
+    .sidebar.open{transform:none}
+    .scrim{display:block; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:55; opacity:0; pointer-events:none; transition:opacity .2s}
+    .scrim.open{opacity:1; pointer-events:auto}
+    .hamburger{display:grid; flex:0 0 auto}
+    .content{width:100%}
+  }
   .icon-btn{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line);color:var(--text);font-size:17px}
   .icon-btn:active{transform:scale(.94)}
   .add-btn{display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:700;padding:0 15px;height:38px;border-radius:10px;font-size:14px;box-shadow:0 4px 14px rgba(91,140,255,.4)}
@@ -206,32 +232,39 @@
 </head>
 <body>
 <div id="app">
-  <header class="top">
-    <div class="top-row">
-      <div class="brand"><span class="dot"></span>Reel Pipeline</div>
-      <div class="spacer"></div>
-      <button class="icon-btn" id="btnSync" title="Sync settings"><span class="syncdot" id="syncDot"></span></button>
-      <button class="add-btn" id="btnAdd">＋ New</button>
+  <aside class="sidebar" id="sidebar">
+    <div class="side-brand"><span class="dot"></span>Reel Pipeline</div>
+    <nav class="side-nav">
+      <button class="nav-item" data-section="short"><span class="ni-ic">🎬</span>Short-form</button>
+      <button class="nav-item" data-section="long"><span class="ni-ic">🎞️</span>Long-form</button>
+      <button class="nav-item" data-section="calendar"><span class="ni-ic">🗓️</span>Calendar</button>
+    </nav>
+    <div class="side-foot">
+      <button class="nav-item" id="btnSync"><span class="syncdot" id="syncDot"></span>Sync &amp; devices</button>
     </div>
-    <div class="controls">
-      <div class="seg" id="viewSeg">
-        <button data-view="board" class="on">▦ Board</button>
-        <button data-view="table">▤ Table</button>
-        <button data-view="cal">▤ Calendar</button>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+  <div class="content">
+    <header class="cbar">
+      <button class="icon-btn hamburger" id="hamburger">☰</button>
+      <span class="sec-title" id="secTitle">Short-form</span>
+      <div class="filters">
+        <div class="seg" id="viewSeg">
+          <button data-view="board" class="on">▦ Board</button>
+          <button data-view="table">▤ Table</button>
+        </div>
+        <div class="search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+          <input id="search" placeholder="Search…" autocomplete="off">
+        </div>
+        <button class="chip" data-plat="youtube">YouTube</button>
+        <button class="chip" data-plat="instagram">Instagram</button>
+        <button class="chip rej" data-status="rejected">Rejected</button>
       </div>
-      <div class="search">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
-        <input id="search" placeholder="Search…" autocomplete="off">
-      </div>
-      <button class="chip" data-fmt="all">All</button>
-      <button class="chip" data-fmt="long">Long-form</button>
-      <button class="chip" data-fmt="short">Short-form</button>
-      <button class="chip" data-plat="youtube">YouTube</button>
-      <button class="chip" data-plat="instagram">Instagram</button>
-      <button class="chip rej" data-status="rejected">Rejected</button>
-    </div>
-  </header>
-  <main id="main"></main>
+      <button class="add-btn" id="btnAdd">＋ New short</button>
+    </header>
+    <main id="main"></main>
+  </div>
 </div>
 
 <div class="overlay" id="overlay"></div>
@@ -279,7 +312,8 @@ const CFG_KEY = "reelpipeline.cfg.v1";
 
 let state = load();
 let cfg = loadCfg();
-let ui = { view: cfg.view||"board", fmt:"all", plat:null, status:"active", q:"", editingId:null,
+let ui = { section: cfg.section||"short", view: (cfg.view==="board"||cfg.view==="table")?cfg.view:"board",
+           plat:null, status:"active", q:"", editingId:null, compact:false,
            calMonth:null, calSel:null, armedId:null, _draft:null };
 
 function load(){ try{ const d=JSON.parse(localStorage.getItem(LS_KEY)); if(d&&d.videos) return d; }catch(e){} return {videos:{},updatedAt:0}; }
@@ -304,7 +338,8 @@ function fmtColor(v){ return v.format==="long"?"var(--long)":"var(--short)"; }
 function passesFilter(v){
   if(ui.status==="rejected"){ if(v.status!=="rejected") return false; }
   else if(v.status==="rejected") return false;
-  if(ui.fmt!=="all" && v.format!==ui.fmt) return false;
+  if(ui.section==="short" && v.format!=="short") return false;
+  if(ui.section==="long" && v.format!=="long") return false;
   if(ui.plat && !(v.platform||[]).includes(ui.plat)) return false;
   if(ui.q){
     const hay=[v.title,v.notes,v.shortType,v.caption,v.hashtags,(v.platform||[]).join(" ")].join(" ").toLowerCase();
@@ -316,13 +351,16 @@ function passesFilter(v){
 // ============================ RENDER ============================
 const main=document.getElementById("main");
 function render(){
+  document.querySelectorAll(".nav-item[data-section]").forEach(b=>b.classList.toggle("on",b.dataset.section===ui.section));
+  const st=document.getElementById("secTitle"); if(st) st.textContent=ui.section==="short"?"Short-form":ui.section==="long"?"Long-form":"Calendar";
+  const seg=document.getElementById("viewSeg"); if(seg) seg.style.display=ui.section==="calendar"?"none":"";
+  const add=document.getElementById("btnAdd"); if(add) add.textContent=ui.section==="long"?"＋ New long":ui.section==="short"?"＋ New short":"＋ New";
   document.querySelectorAll("#viewSeg button").forEach(b=>b.classList.toggle("on",b.dataset.view===ui.view));
-  document.querySelectorAll(".chip[data-fmt]").forEach(b=>b.classList.toggle("on",b.dataset.fmt===ui.fmt));
   document.querySelectorAll(".chip[data-plat]").forEach(b=>b.classList.toggle("on",b.dataset.plat===ui.plat));
   document.querySelector('.chip[data-status]').classList.toggle("on",ui.status==="rejected");
-  if(ui.view==="board") renderBoard();
+  if(ui.section==="calendar") renderCal();
   else if(ui.view==="table") renderTable();
-  else renderCal();
+  else renderBoard();
 }
 
 function renderBoard(){
@@ -515,14 +553,49 @@ function blankVideo(over){
     createdAt:nowISO(), updatedAt:nowISO(), stageEnteredAt:nowISO(), order:all().length }, over||{});
 }
 
-function openEditor(id){
-  const v=id?JSON.parse(JSON.stringify(state.videos[id])):blankVideo();
-  ui.editingId=id||null; ui._draft=v;
-  document.getElementById("sheetTitle").textContent=id?"Edit video":"New video";
+function openEditor(id, presetFormat){
+  const v=id?JSON.parse(JSON.stringify(state.videos[id])):blankVideo({format:presetFormat||"short"});
+  ui.editingId=id||null; ui._draft=v; ui.compact=!id;
+  document.getElementById("sheetTitle").textContent=id?"Edit video":"New idea";
   document.getElementById("btnDelete").classList.toggle("hide",!id);
-  sheetBody.innerHTML=editorHTML(v);
-  wireEditor(v);
+  if(ui.compact){ sheetBody.innerHTML=compactHTML(v); wireCompact(v); }
+  else { sheetBody.innerHTML=editorHTML(v); wireEditor(v); }
   showSheet(sheet);
+}
+
+function compactHTML(v){
+  return `
+    <label class="fld"><span>Idea name</span><input id="f_title" value="${esc(v.title)}" placeholder="What's the idea?"></label>
+    <div class="fld"><span>Format</span><div class="pills">
+      <button type="button" class="pick ${v.format==='short'?'on':''}" data-fmt="short">Short-form</button>
+      <button type="button" class="pick ${v.format==='long'?'on':''}" data-fmt="long">Long-form</button>
+    </div></div>
+    <label class="fld"><span>Notes</span><textarea id="f_notes" style="min-height:92px" placeholder="Concept, angle, references…">${esc(v.notes)}</textarea></label>
+    <label class="fld"><span>Google Drive folder</span><input id="f_drive" value="${esc(v.driveLink)}" placeholder="Auto-create, or paste a link" inputmode="url"></label>
+    ${cfg.driveUrl?`<button type="button" class="addkid" id="btnDriveCreate">✨ Auto-create Drive folder</button>`:`<div class="hint">Set up Drive in Sync settings to auto-create folders here.</div>`}
+    <div class="hint" style="margin-top:16px">New ideas land in <b>Ideas</b>. Open the card later to accept it and add script, shooting &amp; posting details.</div>
+  `;
+}
+
+function wireCompact(v){
+  sheetBody.querySelectorAll("[data-fmt]").forEach(b=>b.addEventListener("click",()=>{
+    v.format=b.dataset.fmt;
+    sheetBody.querySelectorAll("[data-fmt]").forEach(x=>x.classList.toggle("on",x.dataset.fmt===v.format));
+  }));
+  const dc=sheetBody.querySelector("#btnDriveCreate");
+  if(dc){
+    const di=sheetBody.querySelector("#f_drive");
+    const sync=()=>{ dc.style.display=di.value.trim()?"none":""; };
+    sync(); di.addEventListener("input",sync);
+    dc.addEventListener("click",async()=>{
+      const title=(sheetBody.querySelector("#f_title").value||"").trim();
+      if(!title){ toast("Add an idea name first"); return; }
+      dc.disabled=true; dc.textContent="Creating folder…";
+      try{ const url=await createDriveFolder(title,v.format); di.value=url; v.driveLink=url; sync(); toast("Drive folder created ✓"); }
+      catch(err){ toast("Folder failed: "+err.message); dc.disabled=false; dc.textContent="✨ Retry — create Drive folder"; }
+    });
+  }
+  ui._draft=v;
 }
 
 function editorHTML(v){
@@ -658,15 +731,17 @@ function addKid(parent){
 
 function saveEditor(){
   const v=collectInto(ui._draft);
-  if(!v.title){ toast("Add a title first"); const t=sheetBody.querySelector("#f_title"); if(t) t.focus(); return; }
+  if(!v.title){ toast("Add an idea name first"); const t=sheetBody.querySelector("#f_title"); if(t) t.focus(); return; }
+  const wasNew=!ui.editingId;
   const prev=ui.editingId?state.videos[ui.editingId]:null;
   if(prev && prev.stage!==v.stage) v.stageEnteredAt=nowISO();
   if(v.stage==="scheduled" && !v.scheduledDate) v.scheduledDate=todayISO();
   if(v.scheduledDate && (v.stage==="ready"||STAGE_IDX[v.stage]<STAGE_IDX.scheduled)) { v.stage="scheduled"; }
   v.updatedAt=nowISO();
   state.videos[v.id]=v; save(); pushRemote(v);
-  hideSheet(sheet); render(); toast(ui.editingId?"Saved":"Added");
-  ui.editingId=null; ui._draft=null;
+  if(wasNew && ui.section!=="calendar"){ ui.section=v.format; cfg.section=ui.section; saveCfg(); }
+  hideSheet(sheet); render(); toast(wasNew?"Idea added":"Saved");
+  ui.editingId=null; ui._draft=null; ui.compact=false;
 }
 function deleteEditor(){
   const id=ui.editingId; if(!id) return;
@@ -679,7 +754,7 @@ function deleteEditor(){
 function showSheet(s){ overlay.classList.add("show"); s.classList.add("show"); document.body.style.overflow="hidden"; }
 function hideSheet(s){ s.classList.remove("show"); overlay.classList.remove("show"); document.body.style.overflow=""; }
 
-document.getElementById("btnAdd").onclick=()=>openEditor(null);
+document.getElementById("btnAdd").onclick=()=>openEditor(null, ui.section==="long"?"long":"short");
 document.getElementById("btnSave").onclick=saveEditor;
 document.getElementById("btnCancel").onclick=()=>hideSheet(sheet);
 document.getElementById("sheetClose").onclick=()=>hideSheet(sheet);
@@ -687,10 +762,15 @@ document.getElementById("btnDelete").onclick=deleteEditor;
 overlay.onclick=()=>{ hideSheet(sheet); hideSheet(syncSheet); };
 
 document.querySelectorAll("#viewSeg button").forEach(b=>b.onclick=()=>{ ui.view=b.dataset.view; cfg.view=ui.view; saveCfg(); render(); });
-document.querySelectorAll(".chip[data-fmt]").forEach(b=>b.onclick=()=>{ ui.fmt=b.dataset.fmt; render(); });
 document.querySelectorAll(".chip[data-plat]").forEach(b=>b.onclick=()=>{ ui.plat=ui.plat===b.dataset.plat?null:b.dataset.plat; render(); });
 document.querySelector(".chip[data-status]").onclick=()=>{ ui.status=ui.status==="rejected"?"active":"rejected"; render(); };
 let qT; document.getElementById("search").oninput=e=>{ clearTimeout(qT); qT=setTimeout(()=>{ui.q=e.target.value;render();},120); };
+
+const sidebarEl=document.getElementById("sidebar"), scrimEl=document.getElementById("scrim");
+function closeDrawer(){ sidebarEl.classList.remove("open"); scrimEl.classList.remove("open"); }
+document.getElementById("hamburger").onclick=()=>{ sidebarEl.classList.add("open"); scrimEl.classList.add("open"); };
+scrimEl.onclick=closeDrawer;
+document.querySelectorAll(".nav-item[data-section]").forEach(b=>b.onclick=()=>{ ui.section=b.dataset.section; cfg.section=ui.section; saveCfg(); closeDrawer(); render(); });
 
 let toastT;
 function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),2200); }
