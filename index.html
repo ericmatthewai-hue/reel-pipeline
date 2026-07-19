@@ -774,7 +774,7 @@ document.getElementById("btnSync").onclick=()=>{ renderSyncSheet(); showSheet(sy
 document.getElementById("syncClose").onclick=()=>hideSheet(syncSheet);
 document.getElementById("syncCancel").onclick=()=>hideSheet(syncSheet);
 document.getElementById("syncSave").onclick=()=>{
-  cfg.url=(syncBody.querySelector("#s_url").value||"").trim().replace(/\/$/,"");
+  cfg.url=(syncBody.querySelector("#s_url").value||"").trim().replace(/\/rest\/v1\/?$/,"").replace(/\/+$/,"");
   cfg.key=(syncBody.querySelector("#s_key").value||"").trim();
   cfg.space=(syncBody.querySelector("#s_space").value||"my-videos").trim()||"my-videos";
   cfg.driveUrl=(syncBody.querySelector("#d_url").value||"").trim();
