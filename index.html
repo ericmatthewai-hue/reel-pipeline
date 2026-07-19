@@ -571,6 +571,7 @@ function editorHTML(v){
     <label class="fld"><span>Notes / concept</span><textarea id="f_notes" placeholder="What's the video about? Angle, references, why now…">${esc(v.notes)}</textarea></label>
     ${isLong?"":`<label class="fld"><span>Hook</span><input id="f_hook" value="${esc(v.hook)}" placeholder="First 2 seconds…"></label>`}
     ${driveField}
+    ${cfg.driveUrl?`<button type="button" class="addkid" id="btnDriveCreate" style="margin:-6px 0 16px">✨ Auto-create Drive folder</button>`:""}
 
     <div class="section">✍️ ${isLong?'Script / outline':'Light script'}</div>
     <label class="fld"><span>Script</span><textarea id="f_script" style="min-height:100px" placeholder="Beats, VO, dialogue…">${esc(v.script)}</textarea></label>
@@ -617,6 +618,19 @@ function wireEditor(v){
   sheetBody.querySelectorAll("[data-kid]").forEach(r=>r.addEventListener("click",()=>{ collectInto(v); state.videos[v.id]=v; save(); openEditor(r.dataset.kid); }));
   const ak=sheetBody.querySelector("#addKid");
   if(ak) ak.addEventListener("click",()=>addKid(v));
+  const dc=sheetBody.querySelector("#btnDriveCreate");
+  if(dc){
+    const di=sheetBody.querySelector("#f_drive");
+    const sync=()=>{ dc.style.display=di.value.trim()?"none":""; };
+    sync(); di.addEventListener("input",sync);
+    dc.addEventListener("click",async()=>{
+      const title=(sheetBody.querySelector("#f_title").value||"").trim();
+      if(!title){ toast("Add a title first"); return; }
+      dc.disabled=true; dc.textContent="Creating folder…";
+      try{ const url=await createDriveFolder(title); di.value=url; v.driveLink=url; sync(); toast("Drive folder created ✓"); }
+      catch(err){ toast("Folder failed: "+err.message); dc.disabled=false; dc.textContent="✨ Retry — create Drive folder"; }
+    });
+  }
   ui._draft=v;
 }
 
@@ -694,6 +708,12 @@ function renderSyncSheet(){
     <label class="fld"><span>Anon public key</span><input id="s_key" value="${esc(cfg.key||"")}" placeholder="eyJ…" autocomplete="off"></label>
     <label class="fld"><span>Workspace name</span><input id="s_space" value="${esc(cfg.space||"my-videos")}" placeholder="my-videos"></label>
     <div class="hint">Use the same 3 values on every device to share one pipeline.</div>
+
+    <div class="section">📁 Google Drive folders</div>
+    <div class="hint">Optional. Paste your Apps Script web-app URL to auto-create a Drive folder per idea. Setup takes ~10 min once — ask Claude for the steps.</div>
+    <label class="fld"><span>Apps Script web-app URL</span><input id="d_url" value="${esc(cfg.driveUrl||"")}" placeholder="https://script.google.com/…/exec" inputmode="url" autocomplete="off"></label>
+    <label class="fld"><span>Shared secret</span><input id="d_secret" value="${esc(cfg.driveSecret||"")}" placeholder="the SECRET from your script" autocomplete="off"></label>
+
     <div class="section">Status</div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><span class="syncdot ${connected?'on':syncState==='err'?'err':''}"></span><b>${connected?"Connected & live":syncState==="connecting"?"Connecting…":syncState==="err"?"Connection error":"Not connected (local only)"}</b></div>
     <details><summary style="cursor:pointer;color:var(--accent);font-weight:600;margin-bottom:10px">▸ First-time setup steps</summary>
@@ -741,6 +761,15 @@ function mergeRemote(id,data){ if(!data) return; const l=state.videos[id]; if(!l
 async function pushRemote(v){ if(!sb||syncState!=="on") return; try{ await sb.from("videos").upsert({id:v.id,space:cfg.space||"my-videos",data:v,updated_at:v.updatedAt||nowISO()}); }catch(e){ console.error("push",e); } }
 async function pushAllLocal(){ if(!sb) return; const rows=Object.values(state.videos).map(v=>({id:v.id,space:cfg.space||"my-videos",data:v,updated_at:v.updatedAt||nowISO()})); if(rows.length) try{ await sb.from("videos").upsert(rows); }catch(e){ console.error(e); } }
 
+// ---- Google Drive folder creation (via user's Apps Script web app) ----
+async function createDriveFolder(title){
+  if(!cfg.driveUrl) throw new Error("Drive not set up");
+  const res=await fetch(cfg.driveUrl,{ method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify({title:title, secret:cfg.driveSecret||""}) });
+  let data; try{ data=await res.json(); }catch(e){ throw new Error("bad response"); }
+  if(!data||!data.ok) throw new Error((data&&data.error)||"failed");
+  return data.url;
+}
+
 document.getElementById("btnSync").onclick=()=>{ renderSyncSheet(); showSheet(syncSheet); };
 document.getElementById("syncClose").onclick=()=>hideSheet(syncSheet);
 document.getElementById("syncCancel").onclick=()=>hideSheet(syncSheet);
@@ -748,6 +777,8 @@ document.getElementById("syncSave").onclick=()=>{
   cfg.url=(syncBody.querySelector("#s_url").value||"").trim().replace(/\/$/,"");
   cfg.key=(syncBody.querySelector("#s_key").value||"").trim();
   cfg.space=(syncBody.querySelector("#s_space").value||"my-videos").trim()||"my-videos";
+  cfg.driveUrl=(syncBody.querySelector("#d_url").value||"").trim();
+  cfg.driveSecret=(syncBody.querySelector("#d_secret").value||"").trim();
   saveCfg();
   if(cfg.url&&cfg.key) connectSync(true); else { setSyncDot("off"); toast("Saved (local only)"); }
   hideSheet(syncSheet);
