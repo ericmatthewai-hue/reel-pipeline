@@ -313,7 +313,8 @@ const STAGES = [
 ];
 const STAGE_IDX = Object.fromEntries(STAGES.map((s,i)=>[s.id,i]));
 const NEXT_LABEL = { toshoot:"Mark shot ›", editing:"Mark ready ›", ready:"Schedule ›", scheduled:"Mark posted ›" };
-const SHORT_TYPES = ["Talking head","Skit / comedy","Trend / remix","Story / vlog","Ranking/List","Deal Content","Clip from long-form"];
+const SHORT_TYPES = ["Talking head","Skit / comedy","Story / vlog","Ranking/List","Deal Content","Clip from long-form"];
+const LONG_TYPES = ["Reacting/Ranking","Podcast","Vlog","Other"];
 const MAX_KIDS = 6;
 
 const LS_KEY = "reelpipeline.v2";
@@ -413,7 +414,7 @@ function cardEl(v){
   const el=document.createElement("div"); el.className="card"+(rejected?" rejected":""); el.draggable=!rejected; el.dataset.id=v.id;
   const dots=STAGES.map((s,i)=>`<span class="pdot" style="background:${i<=idx?s.color:'var(--line2)'}"></span>`).join("");
   const plats=(v.platform||[]).map(p=>`<span class="tag plat">${p==="youtube"?"YouTube":"Instagram"}</span>`).join("");
-  const typeTag=v.format==="short"&&v.shortType?`<span class="tag type">${esc(v.shortType)}</span>`:"";
+  const typeTag=v.shortType?`<span class="tag type">${esc(v.shortType)}</span>`:"";
   const parent=v.parentId?state.videos[v.parentId]:null;
   const parentTag=parent?`<span class="tag parent">↳ ${esc(parent.title||"long-form")}</span>`:"";
   const driveTag=v.driveLink?`<span class="tag drive">🔗 assets</span>`:"";
@@ -688,11 +689,9 @@ function editorHTML(v){
 
   const driveField=`<label class="fld"><span>Google Drive assets link ${isChild?'(from parent)':''}</span><input id="f_drive" value="${esc(v.driveLink||(parent&&parent.driveLink)||'')}" placeholder="https://drive.google.com/…" inputmode="url"></label>`;
 
-  const shortOpts=SHORT_TYPES.map(t=>`<option ${v.shortType===t?'selected':''}>${t}</option>`).join("");
+  const typeOpts=(isLong?LONG_TYPES:SHORT_TYPES).map(t=>`<option ${v.shortType===t?'selected':''}>${t}</option>`).join("");
   const fmtPills=`<div class="pills"><button type="button" class="pick ${v.format==='long'?'on':''}" data-fmt="long" ${isChild?'disabled style="opacity:.4"':''}>Long-form</button><button type="button" class="pick ${v.format==='short'?'on':''}" data-fmt="short" ${isChild?'disabled style="opacity:.4"':''}>Short-form</button></div>`;
-  const formatBlock = isLong
-    ? `<div class="fld"><span>Format</span>${fmtPills}</div>`
-    : `<div class="row2"><div class="fld"><span>Format</span>${fmtPills}</div><label class="fld"><span>Content type</span><input id="f_type" list="typeList" value="${esc(v.shortType)}" placeholder="Reel type…"><datalist id="typeList">${shortOpts}</datalist></label></div>`;
+  const formatBlock = `<div class="row2"><div class="fld"><span>Format</span>${fmtPills}</div><label class="fld"><span>Content type</span><input id="f_type" list="typeList" value="${esc(v.shortType)}" placeholder="Type…"><datalist id="typeList">${typeOpts}</datalist></label></div>`;
 
   // derived shorts (long only)
   let kidsBlock="";
@@ -787,7 +786,6 @@ function collectInto(v){
   set("gear","f_gear"); set("editNotes","f_edit"); set("roughCut","f_rough"); set("rawLink","f_raw"); set("finalLink","f_final"); set("caption","f_caption");
   set("hashtags","f_tags"); set("scheduledDate","f_pub"); set("publishedUrl","f_url");
   if(v.title) v.title=v.title.trim(); if(v.shortType) v.shortType=v.shortType.trim();
-  if(v.format!=="short") v.shortType="";
   return v;
 }
 
