@@ -680,8 +680,6 @@ function wireCompact(v){
 }
 
 function editorHTML(v){
-  const stagePicks=STAGES.map(s=>`<button type="button" class="pick ${v.stage===s.id?'on':''}" data-stage="${s.id}">${s.name}</button>`).join("");
-  const shortOpts=SHORT_TYPES.map(t=>`<option ${v.shortType===t?'selected':''}>${t}</option>`).join("");
   const parent=v.parentId?state.videos[v.parentId]:null;
   const isLong=v.format==="long", isChild=!!v.parentId;
 
@@ -706,52 +704,18 @@ function editorHTML(v){
     ${parentBox}
     <label class="fld"><span>Title</span><input id="f_title" value="${esc(v.title)}" placeholder="${isLong?'e.g. My studio setup tour':'e.g. POV: editing at 2am'}"></label>
 
-    <div class="row2">
-      <div class="fld"><span>Format</span><div class="pills">
-        <button type="button" class="pick ${v.format==='long'?'on':''}" data-fmt="long" ${isChild?'disabled style="opacity:.4"':''}>Long-form</button>
-        <button type="button" class="pick ${v.format==='short'?'on':''}" data-fmt="short" ${isChild?'disabled style="opacity:.4"':''}>Short-form</button>
-      </div></div>
-      <label class="fld" id="wrapType"><span>Content type</span><input id="f_type" list="typeList" value="${esc(v.shortType)}" placeholder="Reel type…"><datalist id="typeList">${shortOpts}</datalist></label>
-    </div>
-
-    <div class="fld"><span>Platform</span><div class="pills">
-      <button type="button" class="pick ${(v.platform||[]).includes('youtube')?'on':''}" data-plat="youtube">▶ YouTube</button>
-      <button type="button" class="pick ${(v.platform||[]).includes('instagram')?'on':''}" data-plat="instagram">◎ Instagram</button>
+    <div class="fld"><span>Format</span><div class="pills">
+      <button type="button" class="pick ${v.format==='long'?'on':''}" data-fmt="long" ${isChild?'disabled style="opacity:.4"':''}>Long-form</button>
+      <button type="button" class="pick ${v.format==='short'?'on':''}" data-fmt="short" ${isChild?'disabled style="opacity:.4"':''}>Short-form</button>
     </div></div>
 
-    <div class="fld"><span>Stage</span><div class="stage-pick" id="stagePick">${stagePicks}</div></div>
+    <label class="fld"><span>Notes</span><textarea id="f_notes" style="min-height:120px" placeholder="Concept, angle, references…">${esc(v.notes)}</textarea></label>
 
-    <div class="section">💡 Idea &amp; notes</div>
-    <label class="fld"><span>Notes / concept</span><textarea id="f_notes" placeholder="What's the video about? Angle, references, why now…">${esc(v.notes)}</textarea></label>
-    ${isLong?"":`<label class="fld"><span>Hook</span><input id="f_hook" value="${esc(v.hook)}" placeholder="First 2 seconds…"></label>`}
     ${driveField}
     ${cfg.driveUrl?`<button type="button" class="addkid" id="btnDriveCreate" style="margin:-6px 0 16px">✨ Auto-create Drive folder</button>`:""}
 
-    <div class="section">✍️ ${isLong?'Script / outline':'Light script'}</div>
-    <label class="fld"><span>Script</span><textarea id="f_script" style="min-height:100px" placeholder="Beats, VO, dialogue…">${esc(v.script)}</textarea></label>
-
-    <div class="section">🎥 Shooting</div>
-    <label class="fld"><span>Shot list</span><textarea id="f_shot" placeholder="Angles, B-roll, cutaways…">${esc(v.shotList)}</textarea></label>
-    <div class="row2">
-      <label class="fld"><span>Location</span><input id="f_loc" value="${esc(v.location)}"></label>
-      <label class="fld"><span>Gear</span><input id="f_gear" value="${esc(v.gear)}"></label>
-    </div>
-
-    <div class="section">✂️ Editing</div>
-    <label class="fld"><span>Edit notes</span><textarea id="f_edit" placeholder="Music, captions, pacing…">${esc(v.editNotes)}</textarea></label>
     <label class="fld"><span>Raw files folder <span style="color:var(--faint);font-weight:500">· send to editor</span></span><input id="f_raw" value="${esc(v.rawLink)}" placeholder="Auto-create, or paste a link" inputmode="url"></label>
     ${cfg.driveUrl?`<button type="button" class="addkid" id="btnRawCreate" style="margin:-6px 0 16px">✨ Create raw files folder</button>`:""}
-    <label class="fld"><span>Rough cut link</span><input id="f_rough" value="${esc(v.roughCut)}" placeholder="https://…" inputmode="url"></label>
-    <label class="fld"><span>Final video link</span><input id="f_final" value="${esc(v.finalLink)}" placeholder="Link to the finished cut" inputmode="url"></label>
-
-    <div class="section">🗓 Posting</div>
-    <label class="fld"><span>Caption / description</span><textarea id="f_caption" placeholder="Final caption…">${esc(v.caption)}</textarea></label>
-    <label class="fld"><span>Hashtags</span><input id="f_tags" value="${esc(v.hashtags)}" placeholder="#reels #editing"></label>
-    <div class="row2">
-      <label class="fld"><span>Publish date</span><input id="f_pub" type="date" value="${esc((v.scheduledDate||'').slice(0,10))}"></label>
-      <label class="fld"><span>Live URL</span><input id="f_url" value="${esc(v.publishedUrl)}" placeholder="https://…" inputmode="url"></label>
-    </div>
-    <div class="hint">Setting a publish date drops this onto the Content Calendar.</div>
 
     ${kidsBlock}
   `;
