@@ -811,6 +811,7 @@ function saveEditor(){
   if(v.scheduledDate && (v.stage==="ready"||STAGE_IDX[v.stage]<STAGE_IDX.scheduled)) { v.stage="scheduled"; }
   v.updatedAt=nowISO();
   state.videos[v.id]=v; save(); pushRemote(v);
+  if(wasNew) maybeAutoFolder(v);   // create the Drive folder as soon as the idea is added
   if(wasNew && ui.section!=="calendar"){ ui.section=v.format; cfg.section=ui.section; saveCfg(); }
   hideSheet(sheet); render(); toast(wasNew?"Idea added":"Saved");
   ui.editingId=null; ui._draft=null; ui.compact=false;
