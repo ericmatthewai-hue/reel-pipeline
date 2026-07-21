@@ -689,9 +689,11 @@ function editorHTML(v){
 
   const driveField=`<label class="fld"><span>Google Drive assets link ${isChild?'(from parent)':''}</span><input id="f_drive" value="${esc(v.driveLink||(parent&&parent.driveLink)||'')}" placeholder="https://drive.google.com/…" inputmode="url"></label>`;
 
-  const typeOpts=(isLong?LONG_TYPES:SHORT_TYPES).map(t=>`<option ${v.shortType===t?'selected':''}>${t}</option>`).join("");
+  const typeArr=(isLong?LONG_TYPES:SHORT_TYPES);
+  const typeOpts=typeArr.map(t=>`<option ${v.shortType===t?'selected':''}>${esc(t)}</option>`).join("");
+  const extraOpt=(v.shortType && !typeArr.includes(v.shortType))?`<option selected>${esc(v.shortType)}</option>`:"";
   const fmtPills=`<div class="pills"><button type="button" class="pick ${v.format==='long'?'on':''}" data-fmt="long" ${isChild?'disabled style="opacity:.4"':''}>Long-form</button><button type="button" class="pick ${v.format==='short'?'on':''}" data-fmt="short" ${isChild?'disabled style="opacity:.4"':''}>Short-form</button></div>`;
-  const formatBlock = `<div class="row2"><div class="fld"><span>Format</span>${fmtPills}</div><label class="fld"><span>Content type</span><input id="f_type" list="typeList" value="${esc(v.shortType)}" placeholder="Type…"><datalist id="typeList">${typeOpts}</datalist></label></div>`;
+  const formatBlock = `<div class="row2"><div class="fld"><span>Format</span>${fmtPills}</div><label class="fld"><span>Content type</span><select id="f_type"><option value="" ${!v.shortType?'selected':''}>Select type…</option>${typeOpts}${extraOpt}</select></label></div>`;
 
   // derived shorts (long only)
   let kidsBlock="";
